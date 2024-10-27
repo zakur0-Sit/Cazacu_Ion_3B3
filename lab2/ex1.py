@@ -1,14 +1,10 @@
-def fib(n):
-    arr = [0, 1]
-    if n < 0:
-        return "error"
-    if n == 0:
-        return [0]
-    for i in range(2, n+1):
-        arr.append(arr[-1] + arr[-2])
-    return arr
+def cmmdc(nr1, nr2):
+    while nr1 != nr2:
+        if nr1 < nr2:
+            nr2 -= nr1
+        else:
+            nr1 -= nr2
+    return nr1
 
-print(fib(6))
-print(fib(0))
-print(fib(1))
-print(fib(-2))
+print(cmmdc(24, 6))
+print(cmmdc(155, 15))

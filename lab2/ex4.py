@@ -1,13 +1,17 @@
-def compose(notes, moves, start):
-    notes_order = [notes[start]]
-    for i in moves:
-        start += i
-        if start > len(notes):
-            start = start - len(notes)
-        if start < 0:
-            start = len(notes) - start
-        notes_order.append(notes[start])
+def camel_to_lower(string):
+    word = string[0]
+    if word.islower():
+        return "Not an upper camel case string!"
+    lower = []
+    for i in string[1:]:
+        if i.islower():
+            word += i
+        else:
+            lower.append(word.lower())
+            word = i
+    if string[-1].isupper():
+        lower.append(word.lower())
+    return "_".join(lower)
 
-    return notes_order
-
-print(compose(["do", "re", "mi", "fa", "sol"], [1, -3, 4, 2], 2))
+print(camel_to_lower("SomeStringInCamelABC"))
+print(camel_to_lower("anotherCamelCase"))

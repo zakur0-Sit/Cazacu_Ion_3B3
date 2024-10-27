@@ -1,18 +1,14 @@
-def x_appearance(x, *arrays):
-    appear = {}
-    for arr in arrays:
-        for i in arr:
-            if i in appear:
-                appear[i] += 1
-            else:
-                appear[i] = 1
+def extract_number(string):
+    number = ""
+    for i in range(len(string)):
+        if string[i].isnumeric() and number == "":
+            number = string[i]
+        elif string[i].isnumeric() and string[i-1].isnumeric():
+            number += string[i]
+        elif string[i].isalpha() and len(number) > 0:
+            break
+    return number
 
-    x_appear = []
-    for key in appear:
-        if appear[key] == x:
-            x_appear.append(key)
-
-    return x_appear
-
-print(x_appearance(2, [1, 2, 3], [2, 3, 4], [4, 5, 6], [4, 1, "test"]))
-print(x_appearance(1, [1, "dog", 5], [2, "cat", 21], [1, "dog", 21, 7], [3, "fish", 7]))
+print(extract_number("abc123abc"))
+print(extract_number("ab12ab34cd31"))
+print(extract_number("An apple is 123 USD"))
