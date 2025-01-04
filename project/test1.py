@@ -274,8 +274,8 @@ def computer_move(stones, grid_lines):
         empty.remove(move)
     return None
 
-def game():
-    grid_lines, stones_radius, screen_size, players = menu()
+def game(grid_lines, stones_radius, screen_size, players):
+    # grid_lines, stones_radius, screen_size, players = menu()
     screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
     pygame.display.set_caption("The Game of Go")
     pygame.display.set_icon(ICON)
@@ -329,6 +329,7 @@ def game():
                 if computer_pos:
                     stones[computer_pos] = current_player
                     computer_tries = 0
+                    pass_count = 0
                     group, liberties, captured_black, captured_white = valid_move(computer_pos[0], computer_pos[1], stones, grid_lines, current_player, captured_black, captured_white)
                     pygame.time.delay(500)
                     STONE_PLACE_SOUND.play()
@@ -372,6 +373,7 @@ def end_game_menu(screen, window_size, black_score, white_score):
 
     replay_button = pygame.Rect((window_size[0] // 2 - 150, window_size[1] // 2), (300, 70))
     main_menu_button = pygame.Rect((window_size[0] // 2 - 150, window_size[1] // 2 + 100), (300, 70))
+    quit_button = pygame.Rect((window_size[0] // 2 - 150, window_size[1] // 2 + 200), (300, 70))
 
     while menu_running:
         for event in pygame.event.get():
@@ -381,8 +383,10 @@ def end_game_menu(screen, window_size, black_score, white_score):
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_position = pygame.mouse.get_pos()
                 if replay_button.collidepoint(mouse_position):
-                    return "menu"
+                    return "replay"
                 elif main_menu_button.collidepoint(mouse_position):
+                    return "menu"
+                elif quit_button.collidepoint(mouse_position):
                     return "quit"
 
         screen.fill((30, 30, 30))
@@ -392,31 +396,41 @@ def end_game_menu(screen, window_size, black_score, white_score):
         score_position = score_text.get_rect(center=(window_size[0] // 2, window_size[1] // 3))
         screen.blit(score_text, score_position)
 
-        # Butonul Menu
+        # Butonul Replay
         pygame.draw.rect(screen, BUTTON_COLOR, replay_button, border_radius=10)
-        replay_text = button_font.render("Main Menu", True, TEXT_COLOR)
+        replay_text = button_font.render("Replay", True, TEXT_COLOR)
         replay_text_position = replay_text.get_rect(center=replay_button.center)
         screen.blit(replay_text, replay_text_position)
 
-        # Butonul Quit
+        # Butonul Menu
         pygame.draw.rect(screen, BUTTON_COLOR, main_menu_button, border_radius=10)
-        main_menu_text = button_font.render("Quit", True, TEXT_COLOR)
+        main_menu_text = button_font.render("Main Menu", True, TEXT_COLOR)
         main_menu_text_position = main_menu_text.get_rect(center=main_menu_button.center)
         screen.blit(main_menu_text, main_menu_text_position)
+
+        # Butonul Quit
+        pygame.draw.rect(screen, BUTTON_COLOR, quit_button, border_radius=10)
+        quit_text = button_font.render("Quit", True, TEXT_COLOR)
+        quit_text_position = quit_text.get_rect(center=quit_button.center)
+        screen.blit(quit_text, quit_text_position)
 
         pygame.display.update()
 
 def main():
     pygame.init()
 
-    in_menu = True
-    in_game = False
+    in_menu = False
+    in_game = True
     end_screen = False
 
     screen = None
     window_size = None
     black_score = 0
     white_score = 0
+
+    grid_lines, stones_radius, screen_size, players = menu()
+    screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
+    window_size = screen.get_size()
 
     running = True
 
@@ -428,13 +442,16 @@ def main():
             in_menu = False
             in_game = True
         elif in_game:
-            black_score, white_score = game()
+            black_score, white_score = game(grid_lines, stones_radius, screen_size, players)
             in_game = False
             end_screen = True
         elif end_screen:
             choice = end_game_menu(screen, window_size, black_score, white_score)
             pygame.time.delay(500)
-            if choice == "menu":
+            if choice == "replay":
+                in_game = True
+                end_screen = False
+            elif choice == "menu":
                 in_menu = True
                 end_screen = False
             elif choice == "quit":
