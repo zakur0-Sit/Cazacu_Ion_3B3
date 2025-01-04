@@ -2,6 +2,9 @@ import pygame
 import sys
 import random
 
+pygame.init()
+pygame.mixer.init()
+
 BUTTON_COLOR = (240, 217, 181)
 BUTTON_COLOR_HOVER = (255, 196, 137)
 TEXT_COLOR = (0, 0, 0)
@@ -9,10 +12,12 @@ FONT = "fonts/Japan Daisuki.otf"
 MENU_BACKGROUND = pygame.image.load("images/bg3.png")
 
 SCREEN_SIZE = (1200, 800)
-MIN_SCREEN_SIZE = (800, 800)
+MIN_SCREEN_SIZE = (1000, 1000)
 MARGIN = 50
 BACKGROUND = pygame.image.load("images/bg1.jpg")
 BG_MUSIC = "sounds/bg.wav"
+STONE_PLACE_SOUND = pygame.mixer.Sound("sounds/put.wav")
+WRONG_MOVE_SOUND = pygame.mixer.Sound("sounds/decline.ogg")
 ICON = pygame.image.load("images/go.png")
 GRID_SIZES = {(800, 1000): 700, (1000, 1200): 900, (1200, float("inf")): 1100}
 GRID_BACKGROUND_COLOR = (240, 217, 181, 180)
@@ -21,6 +26,11 @@ DOT_RADIUS = 5
 DOT_COLOR = (0, 0, 0)
 BLACK_STONE_COLOR = (0, 0, 0)
 WHITE_STONE_COLOR = (255, 255, 255)
+
+def text_writer(screen, text, position, size, color):
+    font = pygame.font.Font(FONT, size)
+    text_surface = font.render(text, True, color)
+    screen.blit(text_surface, position)
 
 def draw_button(screen, text, position, size, hover, color=None):
     font = pygame.font.SysFont(FONT, size)
@@ -105,6 +115,7 @@ def menu():
                     running = False
 
         pygame.display.update()
+
     return selected_size, stones_radius, screen.get_size(), players
 
 def get_grid_size(window_width, window_height):
@@ -135,7 +146,7 @@ def draw_board(screen, grid_size, grid_lines, window_size):
     window_width, window_height = window_size
 
     grid_start_x = (window_width - grid_size) // 2
-    grid_start_y = (window_height - grid_size) // 2
+    grid_start_y = (window_height - grid_size) // 2 + 20
 
     grid_end_x, grid_end_y = grid_start_x + grid_size, grid_start_y + grid_size
 
@@ -263,38 +274,32 @@ def computer_move(stones, grid_lines):
         empty.remove(move)
     return None
 
-def main():
-    pygame.init()
-
+def game():
     grid_lines, stones_radius, screen_size, players = menu()
-
-    bg_music = pygame.mixer.Sound(BG_MUSIC)
-    bg_music.set_volume(0.3)
-    bg_music.play(-1)
     screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
     pygame.display.set_caption("The Game of Go")
     pygame.display.set_icon(ICON)
-    window_size = screen.get_size()
-
     stones = {}
     current_player = 1  # black
     computer_tries = 0
     pass_count = 0
     captured_black, captured_white = 0, 0
+    window_size = screen.get_size()
+    black_score, white_score = 0, 0
 
     grid_size = get_grid_size(window_size[0], window_size[1])
+    game_running = True
 
-    running = True
-    while running:
+    while game_running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                game_running = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_p:
                     pass_count += 1
                     current_player = 3 - current_player
                     if pass_count == 2:
-                        running = False
+                        game_running = False
             elif event.type == pygame.VIDEORESIZE:
                 width = max(event.w, MIN_SCREEN_SIZE[0])
                 height = max(event.h, MIN_SCREEN_SIZE[1])
@@ -312,26 +317,34 @@ def main():
                     group, liberties, captured_black, captured_white = valid_move(col, row, stones, grid_lines, current_player, captured_black, captured_white)
                     if not liberties:
                         del stones[(col, row)]
+                        WRONG_MOVE_SOUND.play()
+                    else:
+                        STONE_PLACE_SOUND.play()
+                        current_player = 3 - current_player
+                else:
+                    WRONG_MOVE_SOUND.play()
+
+            elif current_player == 2 and players == 1:
+                computer_pos = computer_move(stones, grid_lines)
+                if computer_pos:
+                    stones[computer_pos] = current_player
+                    computer_tries = 0
+                    group, liberties, captured_black, captured_white = valid_move(computer_pos[0], computer_pos[1], stones, grid_lines, current_player, captured_black, captured_white)
+                    pygame.time.delay(500)
+                    STONE_PLACE_SOUND.play()
+                    if not liberties:
+                        del stones[computer_pos]
                     else:
                         current_player = 3 - current_player
-
-        if current_player == 2 and players == 1:
-            computer_pos = computer_move(stones, grid_lines)
-            if computer_pos:
-                stones[computer_pos] = current_player
-                computer_tries = 0
-                group, liberties, captured_black, captured_white = valid_move(computer_pos[0], computer_pos[1], stones, grid_lines, current_player, captured_black, captured_white)
-                if not liberties:
-                    del stones[computer_pos]
                 else:
-                    current_player = 3 - current_player
-            else:
-                computer_tries += 1
-                if computer_tries == 10:
-                    print("Computer passed")
-                    pass_count += 1
-                    current_player = 3 - current_player
-                    computer_tries = 0
+                    computer_tries += 1
+
+                    if computer_tries == 10:
+                        print("Computer passed")
+                        pass_count += 1
+                        current_player = 3 - current_player
+                        computer_tries = 0
+
         grid_size = get_grid_size(window_size[0], window_size[1])
         background = pygame.transform.scale(BACKGROUND, window_size)
         screen.blit(background, (0, 0))
@@ -344,12 +357,88 @@ def main():
             stone_color = BLACK_STONE_COLOR if player == 1 else WHITE_STONE_COLOR
             pygame.draw.circle(screen, stone_color, (int(stone_x_pos), int(stone_y_pos)), stones_radius)
 
+        text_writer(screen, f"Black : {captured_white} points | White : {captured_black}", (10, 10), 24, TEXT_COLOR)
+        text_writer(screen, f"Press \"P\" to pass the turn.", (window_size[0] - 330, 10), 24, TEXT_COLOR)
+
         black_score, white_score = calculate_score(stones, grid_lines, captured_black, captured_white)
-        text = f"Negru: {black_score} puncte | Alb: {white_score} puncte"
-        font = pygame.font.Font(FONT, 24)
-        text_surface = font.render(text, True, TEXT_COLOR)
-        screen.blit(text_surface, (10, 10))
+
         pygame.display.update()
+    return black_score, white_score
+
+def end_game_menu(screen, window_size, black_score, white_score):
+    font = pygame.font.Font(FONT, 48)
+    button_font = pygame.font.Font(FONT, 36)
+    menu_running = True
+
+    replay_button = pygame.Rect((window_size[0] // 2 - 150, window_size[1] // 2), (300, 70))
+    main_menu_button = pygame.Rect((window_size[0] // 2 - 150, window_size[1] // 2 + 100), (300, 70))
+
+    while menu_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_position = pygame.mouse.get_pos()
+                if replay_button.collidepoint(mouse_position):
+                    return "menu"
+                elif main_menu_button.collidepoint(mouse_position):
+                    return "quit"
+
+        screen.fill((30, 30, 30))
+
+        # Textul scorurilor
+        score_text = font.render(f"Final Score - Black: {black_score}, White: {white_score}", True, "white")
+        score_position = score_text.get_rect(center=(window_size[0] // 2, window_size[1] // 3))
+        screen.blit(score_text, score_position)
+
+        # Butonul Menu
+        pygame.draw.rect(screen, BUTTON_COLOR, replay_button, border_radius=10)
+        replay_text = button_font.render("Main Menu", True, TEXT_COLOR)
+        replay_text_position = replay_text.get_rect(center=replay_button.center)
+        screen.blit(replay_text, replay_text_position)
+
+        # Butonul Quit
+        pygame.draw.rect(screen, BUTTON_COLOR, main_menu_button, border_radius=10)
+        main_menu_text = button_font.render("Quit", True, TEXT_COLOR)
+        main_menu_text_position = main_menu_text.get_rect(center=main_menu_button.center)
+        screen.blit(main_menu_text, main_menu_text_position)
+
+        pygame.display.update()
+
+def main():
+    pygame.init()
+
+    in_menu = True
+    in_game = False
+    end_screen = False
+
+    screen = None
+    window_size = None
+    black_score = 0
+    white_score = 0
+
+    running = True
+
+    while running:
+        if in_menu:
+            grid_lines, stones_radius, screen_size, players = menu()
+            screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
+            window_size = screen.get_size()
+            in_menu = False
+            in_game = True
+        elif in_game:
+            black_score, white_score = game()
+            in_game = False
+            end_screen = True
+        elif end_screen:
+            choice = end_game_menu(screen, window_size, black_score, white_score)
+            pygame.time.delay(500)
+            if choice == "menu":
+                in_menu = True
+                end_screen = False
+            elif choice == "quit":
+                running = False
 
     pygame.quit()
 
