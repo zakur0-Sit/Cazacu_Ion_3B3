@@ -1,3 +1,15 @@
+"""
+This module implements the game of Go using Pygame. The user can play the game either against
+another player or a computer. The grid can be adjusted in size (9x9, 13x13, 19x19), and the game
+tracks the score based on captured stones and territory control.
+
+The game includes various functions for:
+- Drawing the Go board and stones.
+- Validating moves and removing captured stones.
+- Calculating the score based on captured stones and territory.
+- Playing against another person or a computer.
+"""
+
 import pygame
 import sys
 import random
@@ -28,11 +40,32 @@ BLACK_STONE_COLOR = (0, 0, 0)
 WHITE_STONE_COLOR = (255, 255, 255)
 
 def text_writer(screen, text, position, size, color):
+    """
+    Renders text onto the screen at a specific position.
+
+    Args:
+        screen (pygame.Surface): The surface to render the text on.
+        text (str): The text to render.
+        position (tuple): The (x, y) position to place the text.
+        size (int): Font size of the text.
+        color (tuple): The color of the text in RGB.
+    """
     font = pygame.font.Font(FONT, size)
     text_surface = font.render(text, True, color)
     screen.blit(text_surface, position)
 
 def draw_button(screen, text, position, size, hover, color=None):
+    """
+    Draws a button on the screen with optional hover and custom color effects.
+
+    Args:
+        screen (pygame.Surface): The surface to draw the button on.
+        text (str): The text to display on the button.
+        position (tuple): The button's position and size as (x, y, width, height).
+        size (int): Font size of the button text.
+        hover (bool): Whether the mouse is hovering over the button.
+        color (tuple, optional): Custom color for the button. Defaults to hover or default color.
+    """
     font = pygame.font.SysFont(FONT, size)
     button_color = color if color else (BUTTON_COLOR_HOVER if hover else BUTTON_COLOR)
     pygame.draw.rect(screen, button_color, position, border_radius=10)
@@ -41,6 +74,12 @@ def draw_button(screen, text, position, size, hover, color=None):
     screen.blit(button_text, text_position)
 
 def menu():
+    """
+    Displays the main menu for the game, allowing the user to select game settings or quit.
+
+    Returns:
+        tuple: Selected grid size, stone radius, screen size, and number of players.
+    """
     pygame.init()
     screen = pygame.display.set_mode(SCREEN_SIZE, pygame.RESIZABLE)
     pygame.display.set_caption("The Game of Go")
@@ -102,7 +141,7 @@ def menu():
         for i, button in enumerate(button_positions):
             hover = button.collidepoint(mouse_position)
             color = (100, 200, 100) if i < 2 and player_buttons[i]["players"] == players else None
-            draw_button(screen, buttons[i]["text"], button, 36, hover, color)
+            draw_button(screen, buttons[i]["text"], tuple(button), 36, hover, color)
             if hover and mouse_click:
                 if buttons[i].get("players") is not None:
                     players = buttons[i]["players"]
@@ -119,6 +158,16 @@ def menu():
     return selected_size, stones_radius, screen.get_size(), players
 
 def get_grid_size(window_width, window_height):
+    """
+    Determines the grid size based on the window dimensions.
+
+    Args:
+        window_width (int): The width of the window.
+        window_height (int): The height of the window.
+
+    Returns:
+        int: The size of the grid in pixels.
+    """
     min_dim = min(window_width, window_height)
     for (low, high), grid_size in GRID_SIZES.items():
         if low <= min_dim < high:
@@ -126,6 +175,15 @@ def get_grid_size(window_width, window_height):
     return 500
 
 def get_star_points(grid_lines):
+    """
+    Gets the positions of star points on the board based on grid size.
+
+    Args:
+        grid_lines (int): The number of grid lines (9, 13, or 19).
+
+    Returns:
+        list: A list of tuples representing the star point coordinates.
+    """
     if grid_lines == 19:
         return [(3, 3), (3, 9), (3, 15), (9, 3), (9, 9), (9, 15), (15, 3), (15, 9), (15, 15)]
     elif grid_lines == 13:
@@ -134,6 +192,16 @@ def get_star_points(grid_lines):
         return [(4, 4)]
 
 def draw_star_points(screen, grid_size, grid_lines, grid_start_x, grid_start_y):
+    """
+    Draws star points on the board.
+
+    Args:
+        screen (pygame.Surface): The surface to draw the star points on.
+        grid_size (int): The size of the grid in pixels.
+        grid_lines (int): The number of grid lines.
+        grid_start_x (int): The x-coordinate of the grid's top-left corner.
+        grid_start_y (int): The y-coordinate of the grid's top-left corner.
+    """
     lines_steep = grid_size/(grid_lines - 1)
     star_points = get_star_points(grid_lines)
 
@@ -143,6 +211,18 @@ def draw_star_points(screen, grid_size, grid_lines, grid_start_x, grid_start_y):
         pygame.draw.circle(screen, DOT_COLOR, (position_x, position_y), DOT_RADIUS)
 
 def draw_board(screen, grid_size, grid_lines, window_size):
+    """
+    Draws the Go board on the screen.
+
+    Args:
+        screen (pygame.Surface): The surface to draw the board on.
+        grid_size (int): The size of the grid in pixels.
+        grid_lines (int): The number of grid lines.
+        window_size (tuple): The size of the window as (width, height).
+
+    Returns:
+        tuple: The starting x, y coordinates of the grid and the step size between lines.
+    """
     window_width, window_height = window_size
 
     grid_start_x = (window_width - grid_size) // 2
@@ -167,6 +247,17 @@ def draw_board(screen, grid_size, grid_lines, window_size):
     return grid_start_x, grid_start_y, lines_step
 
 def get_neighbours(col, row, grid_lines):
+    """
+    Returns a list of valid neighbours for a given position on the board.
+
+    Args:
+        col (int): The column of the position.
+        row (int): The row of the position.
+        grid_lines (int): The number of grid lines.
+
+    Returns:
+        list: A list of tuples representing the valid neighbours.
+    """
     neighbours = []
     for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
         new_col, new_row = col + dx, row + dy
@@ -175,16 +266,29 @@ def get_neighbours(col, row, grid_lines):
     return neighbours
 
 def get_group_and_liberties(col, row, player, stones, grid_lines):
+    """
+    Returns the group of stones and liberties for a given position on the board.
+
+    Args:
+        col (int): The column of the position.
+        row (int): The row of the position.
+        player (int): The player's ID (1 or 2).
+        stones (dict): A dictionary of stone positions and their owners.
+        grid_lines (int): The number of grid lines.
+
+    Returns:
+        tuple: The group of stones and liberties as sets.
+    """
     queue = [(col, row)]
     group = set()
     liberties = set()
 
     while queue:
-        c, r = queue.pop(0)
-        if (c, r) in group:
+        searched_col, searched_row = queue.pop(0)
+        if (searched_col, searched_row) in group:
             continue
-        group.add((c, r))
-        for neighbour in get_neighbours(c, r, grid_lines):
+        group.add((searched_col, searched_row))
+        for neighbour in get_neighbours(searched_col, searched_row, grid_lines):
             if neighbour in group:
                 continue
             if neighbour in stones and stones[neighbour] == player:
@@ -195,6 +299,18 @@ def get_group_and_liberties(col, row, player, stones, grid_lines):
     return group, liberties
 
 def remove_group(group, stones, captured_black, captured_white):
+    """
+    Removes a group of stones from the board and updates the captured stones count.
+
+    Args:
+        group (set): A set of stone positions to remove.
+        stones (dict): A dictionary of stone positions and their owners.
+        captured_black (int): The number of captured black stones.
+        captured_white (int): The number of captured white stones.
+
+    Returns:
+        tuple: The updated number of captured black and white stones.
+    """
     for pos in group:
         if stones[pos] == 1:
             captured_black += 1
@@ -205,10 +321,32 @@ def remove_group(group, stones, captured_black, captured_white):
     return captured_black, captured_white
 
 def calculate_score(stones, grid_lines, captured_black, captured_white):
+    """
+    Calculates the score based on captured stones and territory control.
+
+    Args:
+        stones (dict): A dictionary of stone positions and their owners.
+        grid_lines (int): The number of grid lines.
+        captured_black (int): The number of captured black stones.
+        captured_white (int): The number of captured white stones.
+
+    Returns:
+        tuple: The black and white player scores.
+    """
     visited = set()
     territory_black, territory_white = 0, 0
 
     def find_region(start_col, start_row):
+        """
+        Finds the region of empty spaces and neighbouring stones.
+
+        Args:
+            start_col (int): The column of the starting position.
+            start_row (int): The row of the starting position.
+
+        Returns:
+            tuple: The region of empty spaces and neighbouring stones.
+        """
         queue = [(start_col, start_row)]
         regions = set()
         neighbours = set()
@@ -222,7 +360,7 @@ def calculate_score(stones, grid_lines, captured_black, captured_white):
 
             for neighbour in get_neighbours(col, row, grid_lines):
                 if neighbour in stones:
-                    neighbours.add(stones[neighbour])  # Pietre vecine
+                    neighbours.add(stones[neighbour])  # Neighboring stones
                 elif neighbour not in visited:
                     queue.append(neighbour)
 
@@ -233,10 +371,10 @@ def calculate_score(stones, grid_lines, captured_black, captured_white):
             if (col, row) in visited or (col, row) in stones:
                 continue
 
-            # Detectează regiunea liberă și vecinii
+            # Detect free region and neighbors
             region, neighbours = find_region(col, row)
 
-            # Determină dacă regiunea este controlată de un jucător
+            # Determines if the region is controlled by a player
             if len(neighbours) == 1:
                 controlling_player = neighbours.pop()
                 if controlling_player == 1:
@@ -250,6 +388,21 @@ def calculate_score(stones, grid_lines, captured_black, captured_white):
     return black_score, white_score
 
 def valid_move(col, row, stones, grid_lines, current_player, captured_black, captured_white):
+    """
+    Validates a move on the board and removes captured stones if necessary.
+
+    Args:
+        col (int): The column of the move.
+        row (int): The row of the move.
+        stones (dict): A dictionary of stone positions and their owners.
+        grid_lines (int): The number of grid lines.
+        current_player (int): The current player's ID (1 or 2).
+        captured_black (int): The number of captured black stones.
+        captured_white (int): The number of captured white stones.
+
+    Returns:
+        tuple: The group of stones, liberties, and updated captured stones count.
+    """
     for neighbour in get_neighbours(col, row, grid_lines):
         if neighbour in stones and stones[neighbour] != current_player:
             group, liberties = get_group_and_liberties(neighbour[0], neighbour[1], stones[neighbour], stones, grid_lines)
@@ -260,6 +413,16 @@ def valid_move(col, row, stones, grid_lines, current_player, captured_black, cap
     return group, liberties, captured_black, captured_white
 
 def computer_move(stones, grid_lines):
+    """
+    Generates a random move for the computer player.
+
+    Args:
+        stones (dict): A dictionary of stone positions and their owners.
+        grid_lines (int): The number of grid lines.
+
+    Returns:
+        tuple: The computer's move as a (col, row) tuple.
+    """
     empty = []
     for col in range(grid_lines):
         for row in range(grid_lines):
@@ -275,7 +438,18 @@ def computer_move(stones, grid_lines):
     return None
 
 def game(grid_lines, stones_radius, screen_size, players):
-    # grid_lines, stones_radius, screen_size, players = menu()
+    """
+    Runs the game loop for the Go game.
+
+    Args:
+        grid_lines (int): The number of grid lines.
+        stones_radius (int): The radius of the stones.
+        screen_size (tuple): The size of the screen as (width, height).
+        players (int): The number of players (1 or 2).
+
+    Returns:
+        tuple: The black and white player scores.
+    """
     screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
     pygame.display.set_caption("The Game of Go")
     pygame.display.set_icon(ICON)
@@ -367,6 +541,18 @@ def game(grid_lines, stones_radius, screen_size, players):
     return black_score, white_score
 
 def end_game_menu(screen, window_size, black_score, white_score):
+    """
+    Displays the end game menu with options to replay, return to the main menu, or quit the game.
+
+    Args:
+        screen (pygame.Surface): The surface to display the menu on.
+        window_size (tuple): The size of the window as (width, height).
+        black_score (int): The black player's score.
+        white_score (int): The white player's score.
+
+    Returns:
+        str: The user's choice to replay, return to the main menu, or quit the game.
+    """
     font = pygame.font.Font(FONT, 48)
     button_font = pygame.font.Font(FONT, 36)
     menu_running = True
@@ -391,24 +577,24 @@ def end_game_menu(screen, window_size, black_score, white_score):
 
         screen.fill((30, 30, 30))
 
-        # Textul scorurilor
+        # Final Score
         score_text = font.render(f"Final Score - Black: {black_score}, White: {white_score}", True, "white")
         score_position = score_text.get_rect(center=(window_size[0] // 2, window_size[1] // 3))
         screen.blit(score_text, score_position)
 
-        # Butonul Replay
+        # Replay Button
         pygame.draw.rect(screen, BUTTON_COLOR, replay_button, border_radius=10)
         replay_text = button_font.render("Replay", True, TEXT_COLOR)
         replay_text_position = replay_text.get_rect(center=replay_button.center)
         screen.blit(replay_text, replay_text_position)
 
-        # Butonul Menu
+        # Menu Button
         pygame.draw.rect(screen, BUTTON_COLOR, main_menu_button, border_radius=10)
         main_menu_text = button_font.render("Main Menu", True, TEXT_COLOR)
         main_menu_text_position = main_menu_text.get_rect(center=main_menu_button.center)
         screen.blit(main_menu_text, main_menu_text_position)
 
-        # Butonul Quit
+        # Quit Button
         pygame.draw.rect(screen, BUTTON_COLOR, quit_button, border_radius=10)
         quit_text = button_font.render("Quit", True, TEXT_COLOR)
         quit_text_position = quit_text.get_rect(center=quit_button.center)
@@ -417,14 +603,15 @@ def end_game_menu(screen, window_size, black_score, white_score):
         pygame.display.update()
 
 def main():
+    """
+    Main function to run the game.
+    """
     pygame.init()
 
     in_menu = False
     in_game = True
     end_screen = False
 
-    screen = None
-    window_size = None
     black_score = 0
     white_score = 0
 
